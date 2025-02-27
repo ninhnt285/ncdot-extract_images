@@ -1,0 +1,18 @@
+Command to run rosbag:
+ros2 bag play bagfile.db3 
+--topics /zed_front/zed_node_0/depth/depth_registered /zed_rear/zed_node_1/depth/depth_registered /zed_front/zed_node_0/left/image_rect_color /zed_rear/zed_node_1/left/image_rect_color --rate 10
+
+
+
+
+Each 300GB bag file:
+- Run on local:
+    - Copying:  1h
+    - Export Images: 15m with rate = 4  -->  300k images
+                     6m with rate = 10  -->  
+
+- Run on server:
+    - Exporting: 1h 15m with rate = 4
+
+- Export file with right camera: 20GB
+- Export file without right camera: 
