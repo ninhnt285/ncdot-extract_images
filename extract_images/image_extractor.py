@@ -2,6 +2,7 @@ import rclpy
 from rclpy.node import Node
 import cv_bridge
 from sensor_msgs.msg import Image
+from std_msgs.msg import Header
 import cv2
 import numpy as np
 
@@ -38,6 +39,9 @@ class ImageExtractor(Node):
     def __init__(self):
         super().__init__('image_extractor')
         self.cv_bridge = cv_bridge.CvBridge()
+        self.last_image_time = {}
+        self.process_images = {}
+
 
         depth_topics = {
             'front' : '/zed_front/zed_node_0/depth/depth_registered',
@@ -48,7 +52,7 @@ class ImageExtractor(Node):
                 Image,
                 depth_topics[key],
                 lambda msg, key=key: self.depth_callback(msg, key),
-                4
+                10
             )
 
         image_topics = {
@@ -62,11 +66,25 @@ class ImageExtractor(Node):
                 Image,
                 image_topics[key],
                 lambda msg, key=key: self.image_callback(msg, key),
-                4
+                10
             )
 
-    def depth_callback(self, msg: Image, camera: str = "front"):
+    def depth_callback(self, msg: Image, camera: str = "front", threadhold=0.1):
         try:
+            sec = msg.header.stamp.sec
+            nsec = msg.header.stamp.nanosec
+            timestamp = 1e-9 * nsec + sec
+            timestamp_text = f'{sec:011}_{nsec:09}'
+
+            if camera not in self.last_image_time.keys():
+                self.last_image_time[camera] = timestamp
+                self.process_images[camera] = []
+            else:
+                if timestamp - self.last_image_time[camera] < threadhold:
+                    return
+                self.last_image_time[camera] = timestamp
+            self.process_images[camera].append(timestamp_text)
+
             depth_data = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
             # Rotate the image 180 degrees
             depth_data = cv2.rotate(depth_data, cv2.ROTATE_180)
@@ -75,18 +93,33 @@ class ImageExtractor(Node):
             depth_data[np.isnan(depth_data)] = 20.0
 
             depth_data = depth_data * 10.0
-            filtered_index = np.where(depth_data < 200)
+            # filtered_index = np.where(depth_data < 200)
             # print(np.min(depth_data[filtered_index]), np.max(depth_data[filtered_index]))
 
-            cv2.imwrite(f'{camera}_depth_{msg.header.stamp.sec}_{msg.header.stamp.nanosec}.jpg', depth_data)
+            cv2.imwrite(f'{camera}_depth_{timestamp_text}.jpg', depth_data)
 
         except Exception as e:
             # self.get_logger().error('Error converting ROS Image to OpenCV image: %s' % str(e))
             return
         
 
-    def image_callback(self, msg: Image, camera: str = "front_left"):
+    def image_callback(self, msg: Image, camera: str = "front_left", threadhold=0.1):
         try:
+            sec = msg.header.stamp.sec
+            nsec = msg.header.stamp.nanosec
+            timestamp = 1e-9 * nsec + sec
+            timestamp_text = f'{sec:011}_{nsec:09}'
+
+            if camera not in self.last_image_time.keys():
+                self.last_image_time[camera] = timestamp
+                self.process_images[camera] = []
+            else:
+                if timestamp - self.last_image_time[camera] < threadhold:
+                    return
+                self.last_image_time[camera] = timestamp
+            self.process_images[camera].append(timestamp_text)
+
+
             image = self.cv_bridge.imgmsg_to_cv2(msg, "bgr8")
             temp_image = cv2.rotate(image, cv2.ROTATE_180)
             # -- get header data timestamp
@@ -96,7 +129,7 @@ class ImageExtractor(Node):
             if temp_image.shape[2] == 4:
                 temp_image = temp_image[:, :, :3]
 
-            cv2.imwrite(f'{camera}_{msg.header.stamp.sec}_{msg.header.stamp.nanosec}.jpg', temp_image)
+            cv2.imwrite(f'{camera}_{timestamp_text}.jpg', temp_image)
 
         except Exception as e:
             # self.get_logger().error('Error converting ROS Image to OpenCV image: %s' % str(e))
@@ -111,7 +144,13 @@ def main(args=None):
         while rclpy.ok():
             rclpy.spin(extractor)
     except KeyboardInterrupt:
+        print("Keyboard interrupt detected")
         pass
+
+    print("Save timestamps to json file")
+    import json
+    with open('timestamps.json', 'w') as f:
+        json.dump(extractor.process_images, f)
 
     extractor.destroy_node()
     rclpy.shutdown()
