@@ -10,7 +10,7 @@ import datetime
 
 from detect_image import detect_from_frame, get_closest_distance_in_bounding_box
 
-model = YOLO("yolov9e.pt")
+model = YOLO("yolov9c.pt")
 
 CLASS_NAMES_DICT = model.model.names
 # class_ids of interest - car, motorcycle, bus and truck
@@ -69,7 +69,7 @@ def save_image_with_distances(
         x1, y1, x2, y2 = detection[0].astype(int)
         cv2.rectangle(image, (x1, y1), (x2, y2), (0, 255, 0), 2)
         # -- put text and distance together
-        distance_str = f'{distance:.2f}m' if distance != np.inf else '>10m'
+        distance_str = f'{distance:.2f}m' if distance < 10 else '>10m'
         confidenceStr = f'{confidence:.2f}'
         labelwConfidence = f"{labels[idx]}: {confidenceStr}"
         cv2.putText(image, labelwConfidence, (x1, y1 - 10),
@@ -144,11 +144,8 @@ def process_images(images, prefix="front", threshold=0.5):
             save_image_without_any_annotation(
                 image_data, f"./processed/{prefix}_left_{timestamp}.jpg")
 
-        count += 1
-        if count == 1000:
-            break
-
 
 if __name__ == "__main__":
     images = load_json("timestamps.json")
     process_images(images, "front")
+    process_images(images, "rear")

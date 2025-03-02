@@ -8,8 +8,12 @@ ros2 bag play bagfile.db3
 Each 300GB bag file:
 - Run on local:
     - Copying:  1h
-    - Export Images: 15m with rate = 4  -->  300k images        20GB
-                     6m with rate = 10  -->  133k images        7GB
+    - Export Images: 12m with rate = 5  -->  100k images        6GB
 
 - Run on server:
     - Exporting: 1h 15m with rate = 4
+
+
+- YOLO:
+    - v9e       27mins
+    - v9c       17mins

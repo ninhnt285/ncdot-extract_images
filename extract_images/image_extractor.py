@@ -5,6 +5,7 @@ from sensor_msgs.msg import Image
 from std_msgs.msg import Header
 import cv2
 import numpy as np
+from pathlib import Path
 
 np.set_printoptions(threshold=np.inf)
 np.core.arrayprint._line_width = 1000
@@ -42,6 +43,10 @@ class ImageExtractor(Node):
         self.last_image_time = {}
         self.process_images = {}
 
+        # Create directory to save images
+        Path("./front").mkdir(parents=True, exist_ok=True)
+        Path("./rear").mkdir(parents=True, exist_ok=True)
+
 
         depth_topics = {
             'front' : '/zed_front/zed_node_0/depth/depth_registered',
@@ -56,10 +61,8 @@ class ImageExtractor(Node):
             )
 
         image_topics = {
-            'front_left' : '/zed_front/zed_node_0/left/image_rect_color',
-            # 'front_right' : '/zed_front/zed_node_0/right/image_rect_color',
-            'rear_left' : '/zed_rear/zed_node_1/left/image_rect_color',
-            # 'rear_right' : '/zed_rear/zed_node_1/right/image_rect_color'
+            'front' : '/zed_front/zed_node_0/left/image_rect_color',
+            'rear' : '/zed_rear/zed_node_1/left/image_rect_color',
         }
         for key in image_topics:
             self.image_sub = self.create_subscription(
@@ -96,14 +99,16 @@ class ImageExtractor(Node):
             # filtered_index = np.where(depth_data < 200)
             # print(np.min(depth_data[filtered_index]), np.max(depth_data[filtered_index]))
 
-            cv2.imwrite(f'{camera}_depth_{timestamp_text}.jpg', depth_data)
+            cv2.imwrite(f'{camera}/{camera}_depth_{timestamp_text}.jpg', depth_data)
 
         except Exception as e:
             # self.get_logger().error('Error converting ROS Image to OpenCV image: %s' % str(e))
             return
         
 
-    def image_callback(self, msg: Image, camera: str = "front_left", threadhold=0.1):
+    def image_callback(self, msg: Image, key: str = "front", side="left", threadhold=0.1):
+        camera = f"{key}_{side}"
+
         try:
             sec = msg.header.stamp.sec
             nsec = msg.header.stamp.nanosec
@@ -129,7 +134,7 @@ class ImageExtractor(Node):
             if temp_image.shape[2] == 4:
                 temp_image = temp_image[:, :, :3]
 
-            cv2.imwrite(f'{camera}_{timestamp_text}.jpg', temp_image)
+            cv2.imwrite(f'{key}/{camera}_{timestamp_text}.jpg', temp_image)
 
         except Exception as e:
             # self.get_logger().error('Error converting ROS Image to OpenCV image: %s' % str(e))
