@@ -44,8 +44,13 @@ class ImageExtractor(Node):
         self.process_images = {}
 
         # Create directory to save images
-        Path("./front").mkdir(parents=True, exist_ok=True)
-        Path("./rear").mkdir(parents=True, exist_ok=True)
+        Path("./front/left").mkdir(parents=True, exist_ok=True)
+        Path("./front/right").mkdir(parents=True, exist_ok=True)
+        Path("./front/depth").mkdir(parents=True, exist_ok=True)
+
+        Path("./rear/left").mkdir(parents=True, exist_ok=True)
+        Path("./rear/right").mkdir(parents=True, exist_ok=True)
+        Path("./rear/depth").mkdir(parents=True, exist_ok=True)
 
 
         depth_topics = {
@@ -57,7 +62,7 @@ class ImageExtractor(Node):
                 Image,
                 depth_topics[key],
                 lambda msg, key=key: self.depth_callback(msg, key),
-                10
+                20
             )
 
         image_topics = {
@@ -69,10 +74,10 @@ class ImageExtractor(Node):
                 Image,
                 image_topics[key],
                 lambda msg, key=key: self.image_callback(msg, key),
-                10
+                20
             )
 
-    def depth_callback(self, msg: Image, camera: str = "front", threadhold=0.1):
+    def depth_callback(self, msg: Image, camera: str = "front", threadhold=0.05):
         try:
             sec = msg.header.stamp.sec
             nsec = msg.header.stamp.nanosec
@@ -99,14 +104,14 @@ class ImageExtractor(Node):
             # filtered_index = np.where(depth_data < 200)
             # print(np.min(depth_data[filtered_index]), np.max(depth_data[filtered_index]))
 
-            cv2.imwrite(f'{camera}/{camera}_depth_{timestamp_text}.jpg', depth_data)
+            cv2.imwrite(f'{camera}/depth/{camera}_depth_{timestamp_text}.jpg', depth_data)
 
         except Exception as e:
             # self.get_logger().error('Error converting ROS Image to OpenCV image: %s' % str(e))
             return
         
 
-    def image_callback(self, msg: Image, key: str = "front", side="left", threadhold=0.1):
+    def image_callback(self, msg: Image, key: str = "front", side="left", threadhold=0.05):
         camera = f"{key}_{side}"
 
         try:
@@ -134,7 +139,7 @@ class ImageExtractor(Node):
             if temp_image.shape[2] == 4:
                 temp_image = temp_image[:, :, :3]
 
-            cv2.imwrite(f'{key}/{camera}_{timestamp_text}.jpg', temp_image)
+            cv2.imwrite(f'{key}/{side}/{camera}_{timestamp_text}.jpg', temp_image)
 
         except Exception as e:
             # self.get_logger().error('Error converting ROS Image to OpenCV image: %s' % str(e))
