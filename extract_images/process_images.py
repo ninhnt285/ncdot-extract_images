@@ -7,6 +7,8 @@ import numpy as np
 import cv2
 import bisect
 import datetime
+import sys
+from pathlib import Path
 
 from detect_image import detect_from_frame, get_closest_distance_in_bounding_box
 
@@ -83,36 +85,39 @@ def save_image_with_distances(
         cv2.imwrite(output_path, image)
 
 
-def process_images(images, prefix="front", threshold=0.5):
+def process_images(images, prefix="front", working_path=".", threshold=0.5):
+    print(f"Processing {prefix} camera")
+
+    Path(f"{working_path}/{prefix}_processed").mkdir(parents=True, exist_ok=True)
+
     depth_images = images[prefix]
+    depth_images.sort()
 
     count = 0
     for timestamp in images[f"{prefix}_left"][1:]:
         # Load image into cv2
         image_data = cv2.imread(
-            f"{prefix}_left_{timestamp}.jpg", cv2.IMREAD_COLOR_RGB)
+            f"{working_path}/{prefix}/left/{prefix}_left_{timestamp}.jpg", cv2.IMREAD_COLOR_RGB)
 
         # Load depth image
         try:
             idx = max(bisect.bisect_left(depth_images, timestamp) - 1, 0)
         except:
             idx = 0
+        # TODO: Need improvement in idx=0 case
+        # print(f"{depth_images[max(idx-2, 0): min(idx+3, len(depth_images)-1)]} - {depth_images[idx]} - {timestamp}")
         depth_data = cv2.imread(
-            f"{prefix}_depth_{depth_images[idx]}.jpg", cv2.IMREAD_GRAYSCALE)
+            f"{working_path}/{prefix}/depth/{prefix}_depth_{depth_images[idx]}.jpg", cv2.IMREAD_GRAYSCALE)
         depth_data = depth_data.astype(np.float32)
         depth_data = depth_data / 10.0
 
-        # use yolov8 to detect cars
+        # use yolov to detect cars
         detections, labels, confidences = detect_from_frame(
             model, image_data, threshold=0.5)
 
         if len(detections) > 0:
             closest_distances = get_closest_distance_in_bounding_box(
                 depth_data, detections)
-            # # -- convert unix_timestamp to datetime object in python
-            # datetime_obj = datetime.datetime.fromtimestamp(unix_timestamp)
-            # print("Received message at:", readable_time.strftime(
-            #     "%Y-%m-%d%H:%M:%S:%f"), "at index: ", self.frameIndex)
 
             # -- format labels and closest distances
             json_detections = []
@@ -125,10 +130,10 @@ def process_images(images, prefix="front", threshold=0.5):
                 }
                 json_detections.append(detection)
                 # -- print the detections and closest distances
-                print(f"{l},{cd},{cv}", end=";")
-            print()
+                # print(f"{l},{cd},{cv}", end=";")
+            # print()
 
-            with open(f"./processed/{prefix}_left_{timestamp}.json", "w") as file_pointer:
+            with open(f"{working_path}/{prefix}_processed/{prefix}_left_{timestamp}.json", "w") as file_pointer:
                 json.dump(json_detections, file_pointer)
 
             # -- save the image with distances
@@ -138,14 +143,29 @@ def process_images(images, prefix="front", threshold=0.5):
                 detections,
                 labels,
                 confidences,
-                f"./processed/{prefix}_left_{timestamp}.jpg"
+                f"{working_path}/{prefix}_processed/{prefix}_left_{timestamp}.jpg"
             )
         else:
             save_image_without_any_annotation(
-                image_data, f"./processed/{prefix}_left_{timestamp}.jpg")
+                image_data, f"{working_path}/{prefix}_processed/{prefix}_left_{timestamp}.jpg")
+        
+        count += 1
+        if count % 5000 == 0:
+            print(f"Processed {count} images")
+            return
 
 
 if __name__ == "__main__":
-    images = load_json("timestamps.json")
-    process_images(images, "front")
-    process_images(images, "rear")
+    directory = "data/dec_05/08/"
+    dataset = "00"
+
+    working_path = directory + dataset
+
+    if len(sys.argv) == 2:
+        print("Usage: python readPathProcessJSON.py <directory>")
+        directory = sys.argv[1]
+
+    dataset = load_json(f"{working_path}/timestamps.json")
+
+    process_images(dataset, "front", working_path)
+    process_images(dataset, "rear", working_path)
