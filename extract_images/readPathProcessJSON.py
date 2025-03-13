@@ -6,11 +6,19 @@ from collections import defaultdict
 
 
 # Directory path
-directory = 'dec18-2023_0825_frontleft'
+# directory = 'dec18-2023_0825_frontleft'
+directory = 'data/nov_17/17/00'
 
-def processDirectory(directory):
+def processDirectory(images, prefix="front", working_path):
     jpg_files = []
     json_files = []
+
+    depth_images = images[prefix]
+    depth_images.sort()
+
+    count = 0
+    for timestamp in images[f"{prefix}_left"]:
+
     # Loop through all files in the directory
     for filename in os.listdir(directory):
         if filename.endswith('.jpg'):
@@ -63,10 +71,27 @@ def processDirectory(directory):
         print(f"Percentage of time distance is less than 10 meters for {label}: {percentage:0.3f}%")
     print ("-"*100)
 
+def load_json(file_path: str) -> dict:
+    with open(file_path, "r") as f:
+        return json.load(f)
+
 if __name__ == '__main__':
-    if len(sys.argv) < 2:
+    # if len(sys.argv) < 2:
+    #     print("Usage: python readPathProcessJSON.py <directory>")
+    #     sys.exit(1)
+    # if sys.argv[1:]:
+    #     directory = sys.argv[1]
+
+    directory = "data/nov_17/17/"
+    dataset = "00"
+
+    working_path = directory + dataset
+
+    if len(sys.argv) == 2:
         print("Usage: python readPathProcessJSON.py <directory>")
-        sys.exit(1)
-    if sys.argv[1:]:
         directory = sys.argv[1]
-    processDirectory(directory)
+
+    dataset = load_json(f"{working_path}/timestamps.json")
+
+    processDirectory(dataset, "front", working_path)
+    processDirectory(dataset, "rear", working_path)
