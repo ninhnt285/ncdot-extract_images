@@ -86,12 +86,16 @@ def save_image_with_distances(
         cv2.imwrite(output_path, image)
 
 
-def process_images(images, prefix="front", working_path=".", threshold=0.5):
+def process_images(images, prefix="front", working_dir=".", bag_index = "00", threshold=0.5):
     print(f"Processing {prefix} camera")
     start_time = time.time()
 
-    Path(f"{working_path}/{prefix}_processed/images").mkdir(parents=True, exist_ok=True)
-    Path(f"{working_path}/{prefix}_processed/json").mkdir(parents=True, exist_ok=True)
+    original_path = f"{working_dir}/{bag_index}/{prefix}"
+    processed_path = f"{working_dir}/{bag_index}_processed/{prefix}"
+
+    # Create processed path
+    Path(f"{processed_path}/images").mkdir(parents=True, exist_ok=True)
+    Path(f"{processed_path}/json").mkdir(parents=True, exist_ok=True)
 
 
     depth_images = images[prefix]
@@ -100,8 +104,7 @@ def process_images(images, prefix="front", working_path=".", threshold=0.5):
     count = 0
     for timestamp in images[f"{prefix}_left"]:
         # Load image into cv2
-        image_data = cv2.imread(
-            f"{working_path}/{prefix}/left/{prefix}_left_{timestamp}.jpg", cv2.IMREAD_COLOR_RGB)
+        image_data = cv2.imread(f"{original_path}/left/{prefix}_left_{timestamp}.jpg", cv2.IMREAD_COLOR_RGB)
 
         # Load depth image
         try:
@@ -111,13 +114,12 @@ def process_images(images, prefix="front", working_path=".", threshold=0.5):
         # TODO: Need improvement in idx=0 case
         # print(f"{depth_images[max(idx-2, 0): min(idx+3, len(depth_images)-1)]} - {depth_images[idx]} - {timestamp}")
         depth_data = cv2.imread(
-            f"{working_path}/{prefix}/depth/{prefix}_depth_{depth_images[idx]}.jpg", cv2.IMREAD_GRAYSCALE)
+            f"{original_path}/depth/{prefix}_depth_{depth_images[idx]}.jpg", cv2.IMREAD_GRAYSCALE)
         depth_data = depth_data.astype(np.float32)
         depth_data = depth_data / 10.0
 
         # use yolov to detect cars
-        detections, labels, confidences = detect_from_frame(
-            model, image_data, threshold=0.5)
+        detections, labels, confidences = detect_from_frame(model, image_data, threshold)
 
         if len(detections) > 0:
             closest_distances = get_closest_distance_in_bounding_box(
@@ -137,7 +139,7 @@ def process_images(images, prefix="front", working_path=".", threshold=0.5):
                 # print(f"{l},{cd},{cv}", end=";")
             # print()
 
-            with open(f"{working_path}/{prefix}_processed/json/{prefix}_left_{timestamp}.json", "w") as file_pointer:
+            with open(f"{processed_path}/json/{prefix}_left_{timestamp}.json", "w") as file_pointer:
                 json.dump(json_detections, file_pointer)
 
             # -- save the image with distances
@@ -147,11 +149,11 @@ def process_images(images, prefix="front", working_path=".", threshold=0.5):
                 detections,
                 labels,
                 confidences,
-                f"{working_path}/{prefix}_processed/images/{prefix}_left_{timestamp}.jpg"
+                f"{processed_path}/images/{prefix}_left_{timestamp}.jpg"
             )
         else:
             save_image_without_any_annotation(
-                image_data, f"{working_path}/{prefix}_processed/images/{prefix}_left_{timestamp}.jpg")
+                image_data, f"{processed_path}/images/{prefix}_left_{timestamp}.jpg")
         
         count += 1
         if count % 5000 == 0:
@@ -160,16 +162,16 @@ def process_images(images, prefix="front", working_path=".", threshold=0.5):
 
 
 if __name__ == "__main__":
-    directory = "data/nov_17/17/"
-    dataset = "00"
+    working_dir = "data/nov_20/13/"
+    bag_index = "03"
 
-    working_path = directory + dataset
+    if len(sys.argv) == 3:
+        print("Usage: python readPathProcessJSON.py <directory> <bag_index>")
+        working_dir = sys.argv[1]
+        bag_index = sys.argv[2]
 
-    if len(sys.argv) == 2:
-        print("Usage: python readPathProcessJSON.py <directory>")
-        directory = sys.argv[1]
+    dataset = load_json(f"{working_dir}/{bag_index}/timestamps.json")
 
-    dataset = load_json(f"{working_path}/timestamps.json")
-
-    process_images(dataset, "front", working_path)
-    process_images(dataset, "rear", working_path)
+    process_images(dataset, "front", working_dir, bag_index=bag_index)
+    process_images(dataset, "rear", working_dir, bag_index=bag_index)
+    
