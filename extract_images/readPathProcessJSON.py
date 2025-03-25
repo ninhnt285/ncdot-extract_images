@@ -3,51 +3,34 @@ import json
 import sys
 from collections import defaultdict
 
+def get_timestamps(timestamp: str) -> float:
+    sec, nsec = timestamp.split("_")
+    return float(f"{sec}.{nsec}")
 
 
-# Directory path
-# directory = 'dec18-2023_0825_frontleft'
-directory = 'data/nov_17/17/00'
+def processDirectory(dataset, prefix="front", working_path="."):
+    print(f"Processing {prefix} images")
 
-def processDirectory(images, prefix="front", working_path):
-    jpg_files = []
-    json_files = []
+    images = dataset[f"{prefix}_left"]
+    images.sort()
+    total_files = len(images)
 
-    depth_images = images[prefix]
-    depth_images.sort()
-
-    count = 0
-    for timestamp in images[f"{prefix}_left"]:
-
-    # Loop through all files in the directory
-    for filename in os.listdir(directory):
-        if filename.endswith('.jpg'):
-            jpg_files.append(filename)
-        elif filename.endswith('.json'):
-            json_files.append(filename)
-
-    # -- sort the jpg files
-    jpg_files.sort()
-
-    total_files = len(jpg_files)
     # instance_less_than_inf = defaultdict(lambda:0)
     distance_less_than_inf = defaultdict(lambda:[])
+
+    last_time = get_timestamps(images[0])
     # Loop through the .jpg files and check if there is a corresponding .json file
-    for jpg_file in jpg_files:
-        json_file = jpg_file[:-4] + '.json'  # Assuming the .json file has the same name as .jpg file
-        if json_file in json_files:
-            # print(f"Found matching .json file for {jpg_file}")
-            json_file = os.path.join(directory, json_file)  # Append full path of directory to json_file
-            # print (json_file)
+    for timestamp in images[1:]:
+        # image_file = f"{working_path}/{prefix}_processed/images/{prefix}_left_{timestamp}.jpg"
+        json_file = f"{working_path}/{prefix}_processed/json/{prefix}_left_{timestamp}.json"
+        if os.path.exists(json_file):
             with open(json_file, 'r') as f:
                 data = json.load(f)
-                # print (data)
                 # loop through data
                 for dataRow in data:
-                    # print (dataRow)
                     label = dataRow['label']
                     distance = dataRow['closest_distance']
-                    if distance != float('inf') and distance != float('-inf'):
+                    if distance != float('inf') and distance < 15:
                         # Count the occurrences of distances
                         distance_less_than_inf[label].append(distance)
         else:
@@ -66,8 +49,8 @@ def processDirectory(images, prefix="front", working_path):
     print ("-"*100)
     # percentage of time distance is less than inf
     for label, distances in distance_less_than_inf.items():
-        less_than_inf = [d for d in distances if d < float('inf')]
-        percentage = len(less_than_inf) / len(jpg_files) * 100
+        less_than_inf = [d for d in distances if d < 15]
+        percentage = len(less_than_inf) / total_files * 100
         print(f"Percentage of time distance is less than 10 meters for {label}: {percentage:0.3f}%")
     print ("-"*100)
 
@@ -94,4 +77,4 @@ if __name__ == '__main__':
     dataset = load_json(f"{working_path}/timestamps.json")
 
     processDirectory(dataset, "front", working_path)
-    processDirectory(dataset, "rear", working_path)
+    # processDirectory(dataset, "rear", working_path)
