@@ -156,17 +156,17 @@ def process_images(images, prefix="front", working_dir=".", bag_index = "00", th
                 image_data, f"{processed_path}/images/{prefix}_left_{timestamp}.jpg")
         
         count += 1
-        if count % 5000 == 0:
+        if count % 2000 == 0:
             print(f"Processed {count} images: {time.time() - start_time} seconds")
     print(f"Processed {count} images: {time.time() - start_time} seconds")
 
 
 if __name__ == "__main__":
-    working_dir = "data/nov_20/13/"
+    working_dir = "data/nov_20/13"
     bag_index = "03"
 
     if len(sys.argv) == 3:
-        print("Usage: python readPathProcessJSON.py <directory> <bag_index>")
+        print("Usage: python process_images.py <directory> <bag_index>")
         working_dir = sys.argv[1]
         bag_index = sys.argv[2]
 
