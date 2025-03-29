@@ -10,6 +10,7 @@ import datetime
 import sys
 from pathlib import Path
 import time
+import shutil
 
 from detect_image import detect_from_frame, get_closest_distance_in_bounding_box
 
@@ -174,4 +175,10 @@ if __name__ == "__main__":
 
     process_images(dataset, "front", working_dir, bag_index=bag_index)
     process_images(dataset, "rear", working_dir, bag_index=bag_index)
+
+    # Copy the timestamps.json file to the processed directory
+    shutil.copyfile(
+        f"{working_dir}/{bag_index}/timestamps.json",
+        f"{working_dir}/{bag_index}_processed/timestamps.json"
+    )
     
