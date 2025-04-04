@@ -23,51 +23,51 @@ def get_timestamps(timestamp: str) -> float:
     return float(f"{sec}.{nsec}")
 
 
-def processDirectory(dataset, prefix="front", working_path="."):
-    print(f"Processing {prefix} images")
+# def processDirectory(dataset, prefix="front", working_path="."):
+#     print(f"Processing {prefix} images")
 
-    images = dataset[f"{prefix}_left"]
-    images.sort()
-    total_files = len(images)
+#     images = dataset[f"{prefix}_left"]
+#     images.sort()
+#     total_files = len(images)
 
-    # instance_less_than_inf = defaultdict(lambda:0)
-    distance_less_than_inf = defaultdict(lambda:[])
+#     # instance_less_than_inf = defaultdict(lambda:0)
+#     distance_less_than_inf = defaultdict(lambda:[])
 
-    last_time = get_timestamps(images[0])
-    # Loop through the .jpg files and check if there is a corresponding .json file
-    for timestamp in images[1:]:
-        # image_file = f"{working_path}/{prefix}_processed/images/{prefix}_left_{timestamp}.jpg"
-        json_file = f"{working_path}/{prefix}_processed/json/{prefix}_left_{timestamp}.json"
-        if os.path.exists(json_file):
-            with open(json_file, 'r') as f:
-                data = json.load(f)
-                # loop through data
-                for dataRow in data:
-                    label = dataRow['label']
-                    distance = dataRow['closest_distance']
-                    if distance != float('inf') and distance < 15:
-                        # Count the occurrences of distances
-                        distance_less_than_inf[label].append(distance)
-        else:
-            # print(f"No matching .json file found for {jpg_file}")
-            continue
+#     last_time = get_timestamps(images[0])
+#     # Loop through the .jpg files and check if there is a corresponding .json file
+#     for timestamp in images[1:]:
+#         # image_file = f"{working_path}/{prefix}_processed/images/{prefix}_left_{timestamp}.jpg"
+#         json_file = f"{working_path}/{prefix}_processed/json/{prefix}_left_{timestamp}.json"
+#         if os.path.exists(json_file):
+#             with open(json_file, 'r') as f:
+#                 data = json.load(f)
+#                 # loop through data
+#                 for dataRow in data:
+#                     label = dataRow['label']
+#                     distance = dataRow['closest_distance']
+#                     if distance != float('inf') and distance < 15:
+#                         # Count the occurrences of distances
+#                         distance_less_than_inf[label].append(distance)
+#         else:
+#             # print(f"No matching .json file found for {jpg_file}")
+#             continue
 
-    # average distance of each label
-    for label, distances in distance_less_than_inf.items():
-        avg_distance = sum(distances) / len(distances)
-        print(f"Average distance for {label}: {avg_distance:02f} meters")
-    print ("-"*100)
-    # minimum distance of each label
-    for label, distances in distance_less_than_inf.items():
-        min_distance = min(distances)
-        print(f"Minimum distance for {label}: {min_distance:.02f} meters")
-    print ("-"*100)
-    # percentage of time distance is less than inf
-    for label, distances in distance_less_than_inf.items():
-        less_than_inf = [d for d in distances if d < 15]
-        percentage = len(less_than_inf) / total_files * 100
-        print(f"Percentage of time distance is less than 10 meters for {label}: {percentage:0.3f}%")
-    print ("-"*100)
+#     # average distance of each label
+#     for label, distances in distance_less_than_inf.items():
+#         avg_distance = sum(distances) / len(distances)
+#         print(f"Average distance for {label}: {avg_distance:02f} meters")
+#     print ("-"*100)
+#     # minimum distance of each label
+#     for label, distances in distance_less_than_inf.items():
+#         min_distance = min(distances)
+#         print(f"Minimum distance for {label}: {min_distance:.02f} meters")
+#     print ("-"*100)
+#     # percentage of time distance is less than inf
+#     for label, distances in distance_less_than_inf.items():
+#         less_than_inf = [d for d in distances if d < 15]
+#         percentage = len(less_than_inf) / total_files * 100
+#         print(f"Percentage of time distance is less than 10 meters for {label}: {percentage:0.3f}%")
+#     print ("-"*100)
 
 
 vehicle_labels = ["car", "truck", "motorcycle", "bus"]
@@ -85,6 +85,8 @@ def analysis_data(dataset, prefix="front", working_dir=".", bag_index="00"):
     person_frame_10 = 0
     distance_less_than_inf = defaultdict(lambda:[])
 
+    min_time = ""
+    min_distance = 20.0
 
     #TODO: Loop over all exported json
     for timestamp in images:
@@ -106,11 +108,17 @@ def analysis_data(dataset, prefix="front", working_dir=".", bag_index="00"):
                     label = dataRow['label']
                     distance = dataRow['closest_distance']
                     if distance != float('inf') and distance < 15 and distance > 0:
+                        
                         # Count the occurrences of distances
                         distance_less_than_inf[label].append(distance)
                         if label in vehicle_labels:
+                            if min_distance > distance:
+                                min_distance = distance
+                                min_time = timestamp
+
                             has_vehicle_less_than_inf = True
                             distance_less_than_inf["vehicle"].append(distance)
+
 
                         if label == "person":
                             has_person_less_than_inf = True
@@ -132,7 +140,7 @@ def analysis_data(dataset, prefix="front", working_dir=".", bag_index="00"):
             # print(f"No matching .json file found for {jpg_file}")
             continue
 
-
+    print(min_time)
     # # minimum distance of each label
     # for label, distances in distance_less_than_inf.items():
     #     if label not in ["vehicle", "person"]:
@@ -156,9 +164,13 @@ def analysis_data(dataset, prefix="front", working_dir=".", bag_index="00"):
     for label in ["vehicle", "person"]:
         distances = distance_less_than_inf[label]
         min_distance = min(distances)
+        total_distance = sum(distances)
         avg_distance = sum(distances) / len(distances)
         print(f"Minimum distance for {label}: {min_distance:0.3f} meters")
         print(f"Average distance for {label}: {avg_distance:0.3f} meters")
+
+        print(f"Number of detected objects for {label}: {len(distances)}")
+        print(f"Sum of distances for {label}: {total_distance:0.3f} meters")
         print ("-"*100)
 
 
@@ -169,6 +181,8 @@ def analysis_data(dataset, prefix="front", working_dir=".", bag_index="00"):
     print(f"Percentage of time at any distance for person: {(person_frame/total_frame*100):0.3f}%")
     print(f"Percentage of time distance is less than 10 meters for person: {(person_frame_10/total_frame*100):0.3f}%")
     print ("-"*100)
+
+    print(f"Total frames: {total_frame}")
 
     # percentage of time distance is less than inf
     # for label, distances in distance_less_than_inf.items():
@@ -193,8 +207,8 @@ if __name__ == '__main__':
     # if sys.argv[1:]:
     #     directory = sys.argv[1]
 
-    working_dir = "data/dec_18/09"
-    bag_index = "01"
+    working_dir = "data/nov_17/17"
+    bag_index = "00"
 
     if len(sys.argv) == 3:
         print("Usage: python readPathProcessJSON.py <directory> <bag_index>")
@@ -206,5 +220,3 @@ if __name__ == '__main__':
 
     analysis_data(dataset, "front", working_dir, bag_index)
     analysis_data(dataset, "rear", working_dir, bag_index)
-    # processDirectory(dataset, "front", working_path)
-    # processDirectory(dataset, "rear", working_path)
