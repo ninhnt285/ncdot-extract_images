@@ -115,9 +115,9 @@ def process_images(images, prefix="front", working_dir=".", bag_index = "00", th
         # TODO: Need improvement in idx=0 case
         # print(f"{depth_images[max(idx-2, 0): min(idx+3, len(depth_images)-1)]} - {depth_images[idx]} - {timestamp}")
         depth_data = cv2.imread(
-            f"{original_path}/depth/{prefix}_depth_{depth_images[idx]}.jpg", cv2.IMREAD_GRAYSCALE)
+            f"{original_path}/depth/{prefix}_depth_{depth_images[idx]}.png", cv2.IMREAD_ANYDEPTH)
         depth_data = depth_data.astype(np.float32)
-        depth_data = depth_data / 10.0
+        depth_data = depth_data / 5000.0
 
         # use yolov to detect cars
         detections, labels, confidences = detect_from_frame(model, image_data, threshold)

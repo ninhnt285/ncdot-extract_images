@@ -1,11 +1,12 @@
 import rclpy
 from rclpy.node import Node
 import cv_bridge
-from sensor_msgs.msg import Image
-from std_msgs.msg import Header
+from sensor_msgs.msg import Image as ImageMsg
 import cv2
 import numpy as np
 from pathlib import Path
+from PIL import Image
+import os
 
 np.set_printoptions(threshold=np.inf)
 np.core.arrayprint._line_width = 1000
@@ -59,7 +60,7 @@ class ImageExtractor(Node):
         }
         for key in depth_topics:
             self.depth_sub = self.create_subscription(
-                Image,
+                ImageMsg,
                 depth_topics[key],
                 lambda msg, key=key: self.depth_callback(msg, key),
                 20
@@ -71,13 +72,13 @@ class ImageExtractor(Node):
         }
         for key in image_topics:
             self.image_sub = self.create_subscription(
-                Image,
+                ImageMsg,
                 image_topics[key],
                 lambda msg, key=key: self.image_callback(msg, key),
                 20
             )
 
-    def depth_callback(self, msg: Image, camera: str = "front", threadhold=0.05):
+    def depth_callback(self, msg: ImageMsg, camera: str = "front", threadhold=0.05):
         try:
             sec = msg.header.stamp.sec
             nsec = msg.header.stamp.nanosec
@@ -93,25 +94,31 @@ class ImageExtractor(Node):
                 self.last_image_time[camera] = timestamp
             self.process_images[camera].append(timestamp_text)
 
-            depth_data = self.cv_bridge.imgmsg_to_cv2(msg, desired_encoding="passthrough")
+            depth_data = self.cv_bridge.imgmsg_to_cv2(msg)
             # Rotate the image 180 degrees
             depth_data = cv2.rotate(depth_data, cv2.ROTATE_180)
-            # -- replace np.inf values with -1
-            depth_data[np.isinf(depth_data)] = 20.0
-            depth_data[np.isnan(depth_data)] = 20.0
 
-            depth_data = depth_data * 10.0
+            # -- replace np.inf values with -1
+            depth_data[np.isinf(depth_data)] = 12.0
+            depth_data[np.isnan(depth_data)] = 12.0
+
+            depth_data = depth_data * 5000
+            depth_data = depth_data.astype(np.uint16)
+            cv2.imwrite(f'{camera}/depth/{camera}_depth_{timestamp_text}.png', depth_data)
+
             # filtered_index = np.where(depth_data < 200)
             # print(np.min(depth_data[filtered_index]), np.max(depth_data[filtered_index]))
+            # cv2.imwrite(f'{camera}/depth/{camera}_depth_{timestamp_text}.jpg', depth_data)
 
-            cv2.imwrite(f'{camera}/depth/{camera}_depth_{timestamp_text}.jpg', depth_data)
+            # image = Image.fromarray(depth_data)
+            # image.save(f'{camera}/depth/{camera}_depth_{timestamp_text}.tif')
 
         except Exception as e:
             # self.get_logger().error('Error converting ROS Image to OpenCV image: %s' % str(e))
             return
         
 
-    def image_callback(self, msg: Image, key: str = "front", side="left", threadhold=0.05):
+    def image_callback(self, msg: ImageMsg, key: str = "front", side="left", threadhold=0.05):
         camera = f"{key}_{side}"
 
         try:
