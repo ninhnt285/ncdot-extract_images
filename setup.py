@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'extract_images = extract_images.image_extractor:main',
+            'get_depth = extract_images.get_depth:main'
         ],
     },
 )
