@@ -107,7 +107,7 @@ def analysis_data(dataset, prefix="front", working_dir=".", bag_index="00"):
                 for dataRow in data:
                     label = dataRow['label']
                     distance = dataRow['closest_distance']
-                    if distance != float('inf') and distance < 15 and distance > 0:
+                    if distance != float('inf') and distance < 10 and distance > 0:
                         
                         # Count the occurrences of distances
                         distance_less_than_inf[label].append(distance)
